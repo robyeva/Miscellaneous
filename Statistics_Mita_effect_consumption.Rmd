@@ -1,0 +1,137 @@
+---
+title: "Analysis of data from Dell (2010), The Persistent Effects of Peru's Mining Mita"
+author: "Roberta Evangelista"
+date: "8/7/2020"
+output: html_document
+---
+
+```{r}
+library(lmtest)
+library(sandwich)
+library(dplyr)
+```
+
+Data refers to the paper: Dell (2010), The Persistent Effects of Peru's Mining Mita", which analyzes whether a forced labor institution (the "Mita", set up by the Spanish empire in Peru and Bolivia in 16th century and lasting until ~200y ago) still has effects on household consumption and income today 
+```{r}
+data = readr:::read_csv('mitaData_corrected.csv')
+```
+Relevant variables are: 
+- lhhequiv: log equivalent household consumption
+- elv_sh: elevation
+- pothuan_mita: if 1, the household is inside the Mita area (treated)
+- x,y = longitude and latitude variables 
+- dpot: distance from Potosi (large city in colonial times)
+- d_bnd: distance from the Mita boundary
+- slope: mean slope
+- infants, children, adults: number per household
+- bfe4_1, bfe4_2, bfe4_3: boundary segment fixed effects (inside/outside the Mita)
+
+```{r}
+head(data)
+```
+
+
+# Create polynomial variables for latitude and longitude
+```{r}
+data = mutate(data, x_2 = x * x, 
+               y_2 = y * y,
+               xy = x * y,
+               x_3 = x * x * x,
+               y_3 = y * y * y,
+               x2_y = x * x * y,
+               x_y2 = x * y * y)
+```
+
+
+# Filter data by distance to the border
+```{r}
+data_100km = filter(data, d_bnd<=100) 
+data_75km = filter(data, d_bnd<=75)
+data_50km = filter(data, d_bnd<=50)
+```
+
+
+# Regress the log equivalent household consumption on relevant variables (see above) for the household at up to 100km from the border
+The coefficient estimate for Mita is -0.284, suggesting that belonging to the Mita district is associated with a 28% decrease in log household consumption (for households in <100km from the border)
+```{r}
+reg100 = lm(lhhequiv ~ pothuan_mita + x + y + x_2 + y_2 + xy + x_3 + y_3 + x2_y + x_y2 + elv_sh + slope + infants + children + adults + bfe4_1 + bfe4_2 + bfe4_3, data=data_100km)
+summary(reg100)
+```
+
+
+# Helper functions to cluster the standard errors by district.
+```{r}
+#1 - calculate the variance covariance matrix
+get_CL_vcov <- function(model, cluster){
+M = length(unique(cluster))
+N = length(cluster)
+K = model$rank
+dfc = (M/(M-1)) * ((N-1)/(N-K))
+uj = apply(estfun(model), 2, function(x) tapply(x,cluster,sum))
+vcovCL = dfc * sandwich(model, meat=crossprod(uj)/N)
+return(vcovCL)
+}
+
+# 2- Calculate the number of degrees of freedom
+get_CL_df = function(model, cluster){
+M = length(unique(cluster)) 
+df = M-1
+return(df)
+}
+```
+
+
+# Cluster the stanard error by district to evaluate significance.
+The p-value for the Mita variable shows that the result is not significant 
+```{r}
+reg100_covmat = get_CL_vcov(reg100, data_100km$district)
+reg100_degree_freedom = get_CL_df(reg100, data_100km$district)
+coeftest(reg100, reg100_covmat, df=reg100_degree_freedom)
+```
+
+
+# Same as above, but with a 75km cutoff. 
+Being in a Mita district is associated with a 21% decrease in household consumption (not significant)
+```{r}
+reg75 = lm(lhhequiv ~ pothuan_mita + x + y + x_2 + y_2 + xy + x_3 + y_3 + x2_y + x_y2 + elv_sh + slope + infants + children + adults + bfe4_1 + bfe4_2 + bfe4_3, data=data_75km)
+summary(reg75)
+reg75_covmat = get_CL_vcov(reg75, data_75km$district)
+reg75_degree_freedom = get_CL_df(reg75, data_75km$district)
+coeftest(reg75, reg75_covmat, df=reg75_degree_freedom)
+```
+# Same as above, but with a 50km cutoff. 
+Being in a Mita district is associated with a 33% decrease in household consumption (not significant)
+```{r}
+reg50 = lm(lhhequiv ~ pothuan_mita + x + y + x_2 + y_2 + xy + x_3 + y_3 + x2_y + x_y2 + elv_sh + slope + infants + children + adults + bfe4_1 + bfe4_2 + bfe4_3, data=data_50km)
+summary(reg50)
+reg50_covmat = get_CL_vcov(reg50, data_50km$district)
+reg50_degree_freedom = get_CL_df(reg50, data_50km$district)
+coeftest(reg50, reg50_covmat, df=reg50_degree_freedom)
+```
+
+
+# Instead of using latitude and longitude, we can use the distance to Potosi (dpot), which in colonial times was the largest city in the area and has been found as "an important determinant of local production and trading activities, and access to coinage" (Dell 2010)
+
+
+# create polynomial variables of diatnce to Potosi
+```{r}
+data$dpot2 = data$dpot * data$dpot
+data$dpot3 = data$dpot * data$dpot * data$dpot
+```
+
+
+```{r}
+data_100km = filter(data, d_bnd<=100) 
+```
+
+
+# Estimate effect on household consumption (100km cutoff) using dpot variables (instead of longitude and latitude)
+The estimated coefficient of formerly belonging to the Mita district is similar to previous regressions (33% decrease in household consumption), but it is significant (same holds for 75km and 50km cutoffs, not shown).
+An hypothesis is the distance to Potosi is a more economically meaningful variable, which captures a larger share of the residual variance of the outcome variable
+```{r}
+pot100 = lm(lhhequiv ~ pothuan_mita + dpot + dpot2 + dpot3 + elv_sh + slope + infants + children + adults + bfe4_1 + bfe4_2 + bfe4_3, data=data_100km)
+summary(pot100)
+pot100_covmat = get_CL_vcov(pot100, data_100km$district)
+pot100_degree_freedom = get_CL_df(pot100, data_100km$district)
+coeftest(pot100, pot100_covmat, df=pot100_degree_freedom)
+```
