@@ -1,0 +1,146 @@
+---
+title: "Statistica analysis of data from Duflo E., 2001, Schooling and Labor Market Consequences of School Construction in Indonesia: Evidence from an Unusual Policy Experiment."
+author: "Roberta Evangelista"
+date: "6/12/2020"
+output: html_document
+---
+
+```{r}
+library(dummies)
+library(AER)
+```
+
+
+Data refers to the INPRES school construction program studied in Duflo (2001) in “Schooling and Labor Market Consequences of School Construction in Indonesia: Evidence from an Unusual Policy Experiment.” 
+```{r}
+data = read_csv('inpres_data_corrected.csv')
+```
+education: years of education,
+birth_year: year of birth,
+birth_region: region of birth, encoded,
+log_wage = logarithm of monthly earnings,
+num_schools = avergae number of schools,
+high_intensity: if 1, indicates treated group,
+children71 = number of children in the district in 1971
+
+```{r}
+head(data, 6)
+```
+
+Regression of log monthly earnings on education: 
+An extra year of education is estimated to impact the log monthly earnings by 0.077 (not causal!)
+```{r}
+summary(lm(log_wage~education, data = data))
+```
+
+1 - Generate difference-in-difference table to find the effect of the policy on education
+                | Treated | Control | Difference
+ Young (>1968)  | A       | B       | C
+ Old (<1968)    | D       | E       | F
+ Difference     | G       | H       | I
+ 
+ I = difference-in-difference
+ 
+ First, we fill the table with the average education level for each group.
+ Difference-in-difference suggests that the program increases education by 0.07 years per person on average (assuming parallel trends for education in treated and control areas)
+  
+```{r}
+# People born after 1968 were affected by the INPRES school construction program. Create dummy variable for it
+data$dummy_age = ifelse(data$birth_year>= 68, 1, 0)
+
+ed_A = mean(data[(data$dummy_age==1)&(data$high_intensity==1), 'education']$education, na.rm=T)
+ed_B = mean(data[(data$dummy_age==1)&(data$high_intensity==0), 'education']$education, na.rm=T)
+ed_C = ed_A - ed_B
+ed_D = mean(data[(data$dummy_age==0)&(data$high_intensity==1), 'education']$education, na.rm=T)
+ed_E = mean(data[(data$dummy_age==0)&(data$high_intensity==0), 'education']$education, na.rm=T)
+ed_F = ed_D - ed_E
+ed_G = ed_A - ed_D
+ed_H = ed_B - ed_E
+ed_I = ed_G - ed_H
+
+print(paste(ed_A, ed_B, ed_C)) 
+print(paste(ed_D, ed_E, ed_F))
+print(paste(ed_G, ed_H, ed_I))
+
+
+```
+
+
+2 - Generate difference-in-difference table to find the effect of the policy on earnings 
+Fill the table above using the log monthly earnings. 
+The estimated effect of the program on log earnings is 0.001
+```{r}
+ed_A = mean(data[(data$dummy_age==1)&(data$high_intensity==1), 'log_wage']$log_wage, na.rm=T)
+ed_B = mean(data[(data$dummy_age==1)&(data$high_intensity==0), 'log_wage']$log_wage, na.rm=T)
+ed_C = ed_A - ed_B
+ed_D = mean(data[(data$dummy_age==0)&(data$high_intensity==1), 'log_wage']$log_wage, na.rm=T)
+ed_E = mean(data[(data$dummy_age==0)&(data$high_intensity==0), 'log_wage']$log_wage, na.rm=T)
+ed_F = ed_D - ed_E
+ed_G = ed_A - ed_D
+ed_H = ed_B - ed_E
+ed_I = ed_G - ed_H
+
+print(paste(ed_A, ed_B, ed_C)) 
+print(paste(ed_D, ed_E, ed_F))
+print(paste(ed_G, ed_H, ed_I))
+
+```
+
+3 - Calculate the Wald estimate via difference-in-difference
+Assumptions: program has causal effect on education (see above) + exclusion restriction criterion (i.e. the program is only related to earnings via education)
+```{r}
+# a) - run DD regression for estimating the impact of the program on education
+data$didage = data$dummy_age * data$high_intensity
+
+ddedu = lm(education ~ high_intensity + dummy_age + didage, data = data)
+summary(ddedu)
+```
+
+
+```{r}
+# b) - run DD regression for estimating the impact of the program on earnings
+ddearn = lm(log_wage ~ high_intensity + dummy_age + didage, data = data)
+summary(ddearn)
+```
+
+
+```{r}
+# c) - Wald estimate of the effect of education on log earnings, using INPRES exposure as the instrument
+wald_estimate = ddearn$coefficients[[4]] / ddedu$coefficients[[4]]
+wald_estimate
+
+```
+
+4 - Use the IV regression to compute the Wald estimate. 
+The coefficient of the education variable is the Wald estimate
+```{r}
+# the interaction term is the instrument
+# this is a compact form to write two regression, where the coef of education here is the Wald Estimate
+fm = ivreg(log_wage ~ high_intensity + dummy_age + education | high_intensity + dummy_age + didage,
+  data = data)
+summary(fm)
+```
+```{r}
+colnames(data)
+```
+
+
+Run an IV regression with multiple instruments and controls. 
+The coefficient for education suggests that an extra year of schooling increases earnings by 0.076 log points (similar as above, but controlling for possible bias sources).
+```{r}
+# dummy variable for year of birth
+dummy_birth_year = dummy(data$birth_year)
+
+# dummy variable for district of birth 
+dummy_region = dummy(data$birth_region)
+
+df_iv = data.frame(dummy_region, dummy_birth_year)
+df_iv$log_wage <- data$log_wage
+df_iv$education <- data$education
+df_iv$dummy_exposed_schools <- data$dummy_age * data$num_schools
+df_iv$dummy_exposed_children <- data$children71 * data$dummy_age
+
+ivreg(log_wage~.-dummy_exposed_schools|.-education,data=df_iv)
+```
+
+
