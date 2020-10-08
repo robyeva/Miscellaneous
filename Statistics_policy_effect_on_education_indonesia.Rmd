@@ -2,7 +2,7 @@
 title: "Consequences of school construction in Indonesia on schooling and earnings"
 author: "Roberta Evangelista"
 date: "6/12/2020"
-output: html_document
+output: rmarkdown::github_document
 ---
 
 ```{r setup, include=FALSE} 
