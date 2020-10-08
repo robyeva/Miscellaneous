@@ -15,7 +15,7 @@ suppressWarnings(library(AER))
 Duflo (2001) in “Schooling and Labor Market Consequences of School
 Construction in Indonesia: Evidence from an Unusual Policy Experiment”.
 The study analyzes whether the construction of schools in selected
-regions in Indonesia affects the years of schooling and the earnings of
+regions in Indonesia affects the years of schooling and the earnings in
 the treated areas.**
 
 ``` r
@@ -80,13 +80,16 @@ summary(lm(log_wage~education, data = data))
 #### 1 - Generate **difference-in-difference** table to find the effect of the policy on education
 
 ``` 
-               | Treated | Control | Difference
-Young (>1968)  | A       | B       | C
-Old (<1968)    | D       | E       | F
-Difference     | G       | H       | I
+                | Treated | Control | Difference
+Young ^ (>1968) | A       | B       | C
+Old ^ (<1968)   | D       | E       | F
+Difference      | G       | H       | I
 ```
 
 I = difference-in-difference
+
+^ Only people born after 1968 were affected by the INPRES school
+construction program
 
 First, we fill the table with the average education level for each
 group. Difference-in-difference suggests that the program increases
@@ -94,7 +97,7 @@ education by 0.07 years per person on average (assuming parallel trends
 for education in treated and control areas)
 
 ``` r
-# People born after 1968 were affected by the INPRES school construction program. Create dummy variable for it
+# Create dummy variable for being old enough to be in school during the construction program
 data$dummy_age = ifelse(data$birth_year>= 68, 1, 0)
 
 ed_A = mean(data[(data$dummy_age==1)&(data$high_intensity==1), ]$education, na.rm=T)
@@ -127,7 +130,7 @@ print(paste(ed_G, ed_H, ed_I))
 #### 2 - Generate difference-in-difference table to find the effect of the policy on earnings
 
 Fill the table above using the log monthly earnings. The estimated
-effect of the program on log earnings is 0.001
+effect of the program on log earnings is 0.001 (I).
 
 ``` r
 ed_A = mean(data[(data$dummy_age==1)&(data$high_intensity==1), ]$log_wage, na.rm=T)
@@ -161,7 +164,7 @@ print(paste(ed_G, ed_H, ed_I))
 
 Assumptions: the program has a causal effect on education (see above) +
 exclusion restriction criterion (i.e. the program is only related to
-earnings via education)
+earnings via education).
 
 ``` r
 # a) - run DD regression for estimating the impact of the program on education
@@ -290,3 +293,7 @@ ivregd$coefficients[which(names(ivregd$coefficients)=='education')]
 
     ##  education 
     ## 0.07578709
+
+Disclaimer: this notebook is inspired by exercises of the “Foundations
+of Development Policy” course offered by
+[edX](https://www.edx.org/course/foundations-of-development-policy)

@@ -13,11 +13,11 @@ suppressWarnings(library(dplyr))
 
 #### Data extraction
 
-***Data refers to the paper: Dell (2010), “The Persistent Effects of
+**Data refers to the paper: Dell (2010), “The Persistent Effects of
 Peru’s Mining Mita”, which analyzes whether a forced labor institution
 (the “Mita”, set up by the Spanish empire in Peru and Bolivia in 16th
 century and lasting until \~200y ago) still has effects on household
-consumption and income today***
+consumption and income today**
 
 ``` r
 data = readr:::read_csv('mitaData_corrected.csv')
@@ -32,7 +32,7 @@ Relevant variables are:
   - dpot: distance from Potosi (large city in colonial times)
   - d\_bnd: distance from the Mita boundary
   - slope: mean slope
-  - infants, children, adults: number per household
+  - infants, children, adults: numbers per household
   - bfe4\_1, bfe4\_2, bfe4\_3: boundary segment fixed effects
     (inside/outside the Mita)
 
@@ -51,16 +51,16 @@ data = mutate(data, x_2 = x * x,
 #### Filter data by distance to the border
 
 ``` r
-data_100km = filter(data, d_bnd<=100) 
-data_75km = filter(data, d_bnd<=75)
-data_50km = filter(data, d_bnd<=50)
+data_100km = filter(data, d_bnd <= 100) 
+data_75km = filter(data, d_bnd <= 75)
+data_50km = filter(data, d_bnd <= 50)
 ```
 
-#### Regress the log equivalent household consumption on relevant variables (see above) for the household at up to 100 km from the border
+#### Regress the log equivalent household consumption on relevant variables (see above) for the households at up to 100 km from the border
 
 The coefficient estimate for Mita is -0.284, suggesting that belonging
 to the Mita district is associated with a 28% decrease in log household
-consumption (for households in \<100 km from the border)
+consumption (for households in \<100 km from the border).
 
 ``` r
 reg100 = lm(lhhequiv ~ pothuan_mita + x + y + x_2 + y_2 + xy + x_3 + y_3 + x2_y + x_y2 + elv_sh + slope + infants + children + adults + bfe4_1 + bfe4_2 + bfe4_3, data=data_100km)
@@ -164,10 +164,10 @@ coeftest(reg100, reg100_covmat, df=reg100_degree_freedom)
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
-##### Same regression as above, but with a 75 km cutoff
+#### Same regression as above, but with a 75 km cutoff
 
 Being in a Mita district is associated with a 21% decrease in household
-consumption (not significant)
+consumption (not significant).
 
 ``` r
 reg75 = lm(lhhequiv ~ pothuan_mita + x + y + x_2 + y_2 + xy + x_3 + y_3 + x2_y + x_y2 + elv_sh + slope + infants + children + adults + bfe4_1 + bfe4_2 + bfe4_3, data=data_75km)
@@ -244,7 +244,7 @@ coeftest(reg75, reg75_covmat, df=reg75_degree_freedom)
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
-##### Same regression as above, but with a 50 km cutoff
+#### Same regression as above, but with a 50 km cutoff
 
 Being in a Mita district is associated with a 33% decrease in household
 consumption (not significant)
@@ -329,9 +329,9 @@ coeftest(reg50, reg50_covmat, df=reg50_degree_freedom)
 Instead of using latitude and longitude, we can use the distance to
 Potosi (dpot), which in colonial times was the largest city in the area
 and has been found as “an important determinant of local production and
-trading activities, and access to coinage” (Dell 2010)
+trading activities, and access to coinage” (Dell 2010).
 
-##### Create polynomial variables of distance to Potosi
+#### Create polynomial variables of distance to Potosi
 
 ``` r
 data$dpot2 = data$dpot * data$dpot
@@ -339,17 +339,18 @@ data$dpot3 = data$dpot * data$dpot * data$dpot
 ```
 
 ``` r
-data_100km = filter(data, d_bnd<=100) 
+data_100km = filter(data, d_bnd <= 100) 
 ```
 
-##### Estimate effect on household consumption (100 km cutoff) using the *dpot* variables (instead of longitude and latitude)
+#### Estimate effect on household consumption (100 km cutoff) using the *dpot* variables (instead of longitude and latitude)
 
 The estimated coefficient of formerly belonging to the Mita district is
-similar to previous regressions (33% decrease in household consumption),
-but it is significant (the same holds for 75 km and 50 km cutoffs, not
-shown). An hypothesis to explain this result is the distance to Potosi
-is a more economically meaningful variable, which captures a larger
-share of the residual variance of the outcome variable
+similar to previous regressions (estimated 33% decrease in household
+consumption), but is significant (the same holds for 75 km and 50 km
+cutoffs, not shown). An hypothesis to explain this result is the
+distance to Potosi is a more economically meaningful variable, which
+captures a larger share of the residual variance of the outcome
+variable.
 
 ``` r
 pot100 = lm(lhhequiv ~ pothuan_mita + dpot + dpot2 + dpot3 + elv_sh + slope + infants + children + adults + bfe4_1 + bfe4_2 + bfe4_3, data=data_100km)
@@ -413,3 +414,7 @@ coeftest(pot100, pot100_covmat, df=pot100_degree_freedom)
     ## bfe4_3        0.0839921  0.1456158  0.5768 0.5659207    
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Disclaimer: this notebook is inspired by exercises of the “Foundations
+of Development Policy” course offered by
+[edX](https://www.edx.org/course/foundations-of-development-policy)
