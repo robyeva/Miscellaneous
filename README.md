@@ -1,5 +1,6 @@
 # Miscellaneous
-Collection of ML exercises
+Collection of ML and statistics exercises.
 
-This project contains various exercises on common machine learning techniques (Classification, Recommendation system, 
-Value estimation, Image recognition, NLP, etc) and it's currently work in progress.
+This repo contains various exercises on common statistical methods and machine learning techniques (Classification, Regression, NLP, Image recognition) in  Python, R, and Keras, and it's currently work in progress.
+
+
